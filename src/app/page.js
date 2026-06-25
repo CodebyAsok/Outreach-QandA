@@ -34,15 +34,24 @@ export default function Home() {
 
   useEffect(() => {
     if (step === 'quiz') {
+      // Check if the user already started the quiz earlier to prevent cheating on refresh
+      let startTime = localStorage.getItem('quizStartTime');
+      if (!startTime) {
+        startTime = Date.now().toString();
+        localStorage.setItem('quizStartTime', startTime);
+      }
+
       timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current);
-            handleSubmit(null, true); // auto-submit
-            return 0;
-          }
-          return prev - 1;
-        });
+        const elapsedSeconds = Math.floor((Date.now() - parseInt(startTime)) / 1000);
+        const remaining = TIME_LIMIT_SECONDS - elapsedSeconds;
+
+        if (remaining <= 0) {
+          setTimeLeft(0);
+          clearInterval(timerRef.current);
+          handleSubmit(null, true); // auto-submit
+        } else {
+          setTimeLeft(remaining);
+        }
       }, 1000);
     }
 
@@ -127,6 +136,8 @@ export default function Home() {
 
       if (dbError) throw dbError;
 
+      // Clear the timer from local storage so the next user on this device gets a fresh 30 minutes
+      localStorage.removeItem('quizStartTime');
       if (timerRef.current) clearInterval(timerRef.current);
       setStep('success');
     } catch (err) {
